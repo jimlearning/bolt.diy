@@ -1,32 +1,52 @@
-name: Setup and Build
-description: Generic setup action
-inputs:
-  pnpm-version:
-    required: false
-    type: string
-    default: '9.4.0'
-  node-version:
-    required: false
-    type: string
-    default: '20.15.1'
+name: Deploy
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
 
-runs:
-  using: composite
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
 
-  steps:
-    - uses: pnpm/action-setup@v4
-      with:
-        version: ${{ inputs.pnpm-version }}
-        run_install: false
+    permissions:
+      id-token: write # Needed for auth with Deno Deploy
+      contents: read # Needed to clone the repository
 
-    - name: Set Node.js version to ${{ inputs.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ inputs.node-version }}
-        cache: pnpm
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
 
-    - name: Install dependencies and build project
-      shell: bash
-      run: |
-        pnpm install
-        pnpm run build
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9.4.0'
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build step
+        run: |
+          pnpm run build
+          # Ensure build directory exists with both server and client
+          ls -la build/server || (echo "build/server directory not found" && exit 1)
+          ls -la build/client || (echo "build/client directory not found" && exit 1)
+
+      - name: Upload to Deno Deploy
+        uses: denoland/deployctl@v1
+        with:
+          project: "jimlearning-boltdiy"
+          entrypoint: "./build/server/index.js"
+          root: "build"
