@@ -23,22 +23,29 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '9.4.0'
+
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: 'pnpm'
 
-      - name: Install step
-        run: "npm install"
+      - name: Install dependencies
+        run: pnpm install
 
       - name: Build step
-        run: "npm run build"
+        run: |
+          pnpm run build
+          # Ensure build directory exists and contains the built files
+          ls -la build/client || (echo "build/client directory not found" && exit 1)
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
         with:
           project: "jimlearning-boltdiy"
           entrypoint: "https://deno.land/std@0.217.0/http/file_server.ts"
-          root: "dist"
-          
-          
+          root: "build/client"
