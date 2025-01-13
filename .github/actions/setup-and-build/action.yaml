@@ -49,4 +49,4 @@ jobs:
         with:
           project: "jimlearning-boltdiy"
           entrypoint: "./build/server/index.js"
-          root: "build"
+          root: "dist"
